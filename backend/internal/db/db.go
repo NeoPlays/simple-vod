@@ -37,6 +37,13 @@ func InitSchema(ctx context.Context, db *sql.DB) error {
 	);
 
 	CREATE UNIQUE INDEX IF NOT EXISTS uq_videos_name ON videos(name);
+
+	CREATE TABLE IF NOT EXISTS sessions (
+		token TEXT PRIMARY KEY,
+		user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		expires_at DATETIME NOT NULL,
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
 	`)
 	return err
 }

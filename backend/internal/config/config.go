@@ -11,3 +11,11 @@ func GetVideoDirectory() string {
 	}
 	return dir
 }
+
+func GetPasswordPepper() string {
+	pepper := os.Getenv("PASSWORD_PEPPER")
+	if pepper == "" {
+		return "default-pepper"
+	}
+	return pepper
+}
