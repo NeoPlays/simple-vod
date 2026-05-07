@@ -19,6 +19,10 @@ func New(database *sql.DB) http.Handler {
 		return middleware.RequireAuth(database, next)
 	}
 
+	admin := func(next http.HandlerFunc) http.Handler {
+		return middleware.RequireAdmin(database, next)
+	}
+
 	// Public
 	mux.HandleFunc("POST /register", h.RegisterUser)
 	mux.HandleFunc("POST /login", h.LoginUser)
@@ -32,6 +36,11 @@ func New(database *sql.DB) http.Handler {
 	mux.Handle("GET /videos", authed(h.ListVideos))
 	mux.Handle("GET /videos/{id}", authed(h.StreamVideo))
 	mux.Handle("POST /videos/sync", authed(h.SyncVideos))
+
+	// Admin
+	mux.Handle("POST /admin/tokens", admin(h.CreateRegistrationToken))
+	mux.Handle("GET /admin/tokens", admin(h.ListRegistrationTokens))
+	mux.Handle("DELETE /admin/tokens/{token}", admin(h.RevokeRegistrationToken))
 
 	return middleware.Logging(mux)
 }

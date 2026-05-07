@@ -26,8 +26,9 @@ func checkPassword(hash, password string) bool {
 
 func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
+		Username          string `json:"username"`
+		Password          string `json:"password"`
+		RegistrationToken string `json:"registration_token"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -36,6 +37,26 @@ func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	if req.Username == "" || req.Password == "" {
 		http.Error(w, "Username and password are required", http.StatusBadRequest)
 		return
+	}
+
+	count, err := db.UserCount(r.Context(), h.DB)
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	role := db.RoleUser
+	if count == 0 {
+		role = db.RoleAdmin
+	} else {
+		if req.RegistrationToken == "" {
+			http.Error(w, "Registration token required", http.StatusForbidden)
+			return
+		}
+		if err := db.ConsumeRegistrationToken(r.Context(), h.DB, req.RegistrationToken); err != nil {
+			http.Error(w, "Invalid registration token", http.StatusForbidden)
+			return
+		}
 	}
 
 	hashedPassword, err := hashPassword(req.Password)
@@ -47,7 +68,7 @@ func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	u := &db.User{
 		Name:         req.Username,
 		PasswordHash: hashedPassword,
-		Role:         "user",
+		Role:         role,
 	}
 	if err := db.CreateUser(r.Context(), h.DB, u); err != nil {
 		http.Error(w, "Failed to create user", http.StatusInternalServerError)

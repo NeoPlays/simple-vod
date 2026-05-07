@@ -46,3 +46,14 @@ func UserFromContext(ctx context.Context) *db.User {
 	u, _ := ctx.Value(userContextKey).(*db.User)
 	return u
 }
+
+func RequireAdmin(dbConn *sql.DB, next http.Handler) http.Handler {
+	return RequireAuth(dbConn, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		u := UserFromContext(r.Context())
+		if u == nil || u.Role != db.RoleAdmin {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	}))
+}

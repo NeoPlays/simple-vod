@@ -44,6 +44,13 @@ func InitSchema(ctx context.Context, db *sql.DB) error {
 		expires_at DATETIME NOT NULL,
 		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);
+
+	CREATE TABLE IF NOT EXISTS registration_tokens (
+		token TEXT PRIMARY KEY,
+		created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		expires_at DATETIME NOT NULL,
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
 	`)
 	return err
 }

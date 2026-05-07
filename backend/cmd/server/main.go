@@ -13,7 +13,6 @@ import (
 	"github.com/NeoPlays/simple-vod/backend/internal/routes"
 )
 
-
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -30,6 +29,29 @@ func main() {
 	if err := db.InitSchema(initCtx, database); err != nil {
 		log.Fatal(err)
 	}
+
+	// Background goroutine that periodically removes expired sessions and
+	// registration tokens. Runs independently of the main server loop.
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for {
+			// Block until one of the cases is ready.
+			select {
+			case <-ticker.C:
+				// An hour has passed, delete expired rows from both tables.
+				if err := db.DeleteExpiredSessions(context.Background(), database); err != nil {
+					log.Printf("Failed to delete expired sessions: %v", err)
+				}
+				if err := db.DeleteExpiredRegistrationTokens(context.Background(), database); err != nil {
+					log.Printf("Failed to delete expired registration tokens: %v", err)
+				}
+			case <-ctx.Done():
+				// Server is shutting down, exit the goroutine cleanly.
+				return
+			}
+		}
+	}()
 
 	mux := routes.New(database)
 
