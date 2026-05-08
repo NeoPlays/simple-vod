@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyVOD</title>
+  <link rel="stylesheet" href="/shared.css">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .splash { display: flex; flex-direction: column; align-items: center; gap: 32px; }
+    .splash-text { text-align: center; }
+    .splash-title { font-size: 22px; font-weight: 500; letter-spacing: -0.02em; margin-bottom: 6px; }
+    .splash-sub { font-size: 13px; color: var(--fg-hint); letter-spacing: 0.02em; }
+    .progress-track {
+      width: 32px; height: 2px;
+      background: var(--fill-strong); border-radius: 2px; overflow: hidden;
+    }
+    .progress-bar {
+      height: 2px; background: var(--fg-primary); border-radius: 2px;
+      animation: slide 1.2s ease-in-out infinite;
+    }
+    @keyframes slide {
+      0%   { width: 12px; transform: translateX(-12px); }
+      50%  { width: 12px; transform: translateX(10px); }
+      100% { width: 12px; transform: translateX(32px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="splash">
+    <div class="logo-chip logo-chip-lg">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <path d="M5 4.5L19 12L5 19.5V4.5Z" fill="#fafafa"/>
+      </svg>
+    </div>
+    <div class="splash-text">
+      <div class="splash-title">MyVOD</div>
+      <div class="splash-sub">Loading your library</div>
+    </div>
+    <div class="progress-track"><div class="progress-bar"></div></div>
+  </div>
+  <script>
+    fetch('/user').then(r => {
+      window.location.replace(r.ok ? '/videos.html' : '/login.html');
+    });
+  </script>
+</body>
+</html>

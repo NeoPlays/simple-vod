@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Library — MyVOD</title>
+  <link rel="stylesheet" href="/shared.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+  <style>
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+    .page-content { padding: 32px 24px; flex: 1; }
+
+    /* Search wrapper */
+    .search-wrap { position: relative; }
+    .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+    .search-input {
+      height: 32px; width: 220px;
+      background: var(--bg-surface);
+      border: 0.5px solid var(--border-soft);
+      border-radius: var(--r-md);
+      padding: 0 12px 0 30px;
+      font-size: 13px; color: var(--fg-primary);
+      font-family: var(--font-sans); outline: none;
+      transition: border-color 120ms ease;
+    }
+    .search-input::placeholder { color: var(--fg-faint); }
+    .search-input:focus { border-color: var(--border-focus); }
+
+    /* Library header */
+    .library-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 24px; }
+    .library-title { font-size: 22px; font-weight: 500; letter-spacing: -0.02em; }
+    .library-count { font-size: 13px; color: var(--fg-faint); margin-top: 4px; }
+
+    /* Sort segmented control */
+    .sort-control {
+      display: flex; gap: 4px;
+      background: var(--bg-surface);
+      border: 0.5px solid var(--border-faint);
+      border-radius: 7px; padding: 3px;
+    }
+    .sort-pill {
+      height: 24px; padding: 0 10px;
+      font-size: 12px; color: var(--fg-muted);
+      border-radius: 5px; cursor: pointer;
+      display: flex; align-items: center;
+      transition: var(--transition);
+    }
+    .sort-pill.active { background: var(--fill-strong); color: var(--fg-primary); }
+    .sort-pill:hover:not(.active) { color: var(--fg-primary); }
+
+    /* Video grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+    @media (max-width: 900px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 600px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+
+    .tile { cursor: pointer; text-decoration: none; color: inherit; display: block; }
+    .poster {
+      aspect-ratio: 16/9;
+      border-radius: var(--r-md);
+      border: 0.5px solid var(--border-soft);
+      display: flex; align-items: flex-end; padding: 10px;
+      transition: border-color 120ms ease, transform 120ms ease;
+      overflow: hidden;
+    }
+    .tile:hover .poster { transform: scale(1.02); border-color: var(--border-mid); }
+    .poster-label { font-size: 11px; color: rgba(255,255,255,0.85); font-weight: 500; }
+    .tile-title { font-size: 12px; color: rgba(255,255,255,0.85); margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tile-meta { font-size: 11px; color: var(--fg-hint); }
+
+    /* Empty state */
+    .empty { text-align: center; padding: 80px 0; color: var(--fg-faint); }
+    .empty p { margin-top: 8px; font-size: 13px; }
+  </style>
+</head>
+<body x-data="videosPage()">
+  <nav class="nav">
+    <div class="nav-left">
+      <a class="logo" href="/videos.html">
+        <div class="logo-chip logo-chip-sm">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+            <path d="M5 4.5L19 12L5 19.5V4.5Z" fill="#fafafa"/>
+          </svg>
+        </div>
+        <span class="logo-wordmark">MyVOD</span>
+      </a>
+      <div class="nav-pills">
+        <a class="nav-pill active" href="/videos.html">Library</a>
+        <template x-if="user?.role === 'admin'">
+          <a class="nav-pill" href="/tokens.html">Tokens</a>
+        </template>
+      </div>
+    </div>
+    <div class="nav-right">
+      <div class="search-wrap">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+          <circle cx="11" cy="11" r="7" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
+          <path d="M16 16L20 20" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <input class="search-input" type="text" x-model="search" placeholder="Search">
+      </div>
+      <template x-if="user?.role === 'admin'">
+        <button class="btn btn-quiet btn-h32" @click="syncVideos" :disabled="syncing">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+            <path d="M4 12C4 7.58 7.58 4 12 4M12 4L9 7M12 4L15 7M20 12C20 16.42 16.42 20 12 20M12 20L15 17M12 20L9 17"
+              stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+          <span x-text="syncing ? 'Syncing…' : 'Sync'"></span>
+        </button>
+      </template>
+      <div class="avatar" x-text="user?.name?.charAt(0)"></div>
+    </div>
+  </nav>
+
+  <div class="page-content">
+    <div class="library-header">
+      <div>
+        <div class="library-title">Your library</div>
+        <div class="library-count" x-text="`${filteredVideos.length} title${filteredVideos.length !== 1 ? 's' : ''}`"></div>
+      </div>
+      <div class="sort-control">
+        <div class="sort-pill" :class="{ active: sort === 'recent' }" @click="sort = 'recent'">Recent</div>
+        <div class="sort-pill" :class="{ active: sort === 'az' }" @click="sort = 'az'">A–Z</div>
+      </div>
+    </div>
+
+    <div x-show="filteredVideos.length === 0 && !loading" class="empty">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" style="opacity:.3; margin: 0 auto;">
+        <rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M9 9L15 12L9 15V9Z" fill="currentColor"/>
+      </svg>
+      <p x-show="search">No videos match your search.</p>
+      <p x-show="!search && user?.role === 'admin'">No videos yet. Use Sync to import from the server.</p>
+      <p x-show="!search && user?.role !== 'admin'">No videos yet.</p>
+    </div>
+
+    <div class="grid">
+      <template x-for="video in filteredVideos" :key="video.id">
+        <a class="tile" :href="`/player.html?id=${video.id}&name=${encodeURIComponent(video.name)}`">
+          <div class="poster" :style="{ background: posterGradient(video.name) }">
+            <span class="poster-label" x-text="posterLabel(video.name)"></span>
+          </div>
+          <div class="tile-title" x-text="displayName(video.name)"></div>
+        </a>
+      </template>
+    </div>
+  </div>
+
+  <script>
+    function videosPage() {
+      return {
+        videos: [], user: null, search: '', sort: 'recent',
+        loading: true, syncing: false,
+
+        get filteredVideos() {
+          let list = this.sort === 'az'
+            ? [...this.videos].sort((a, b) => a.name.localeCompare(b.name))
+            : [...this.videos].sort((a, b) => b.id - a.id);
+          if (this.search.trim()) {
+            const q = this.search.toLowerCase();
+            list = list.filter(v => v.name.toLowerCase().includes(q));
+          }
+          return list;
+        },
+
+        async init() {
+          const res = await fetch('/user');
+          if (!res.ok) { window.location.replace('/login.html'); return; }
+          this.user = await res.json();
+          const vRes = await fetch('/videos');
+          this.videos = (await vRes.json()) || [];
+          this.loading = false;
+        },
+
+        async syncVideos() {
+          this.syncing = true;
+          await fetch('/videos/sync', { method: 'POST' });
+          const vRes = await fetch('/videos');
+          this.videos = (await vRes.json()) || [];
+          this.syncing = false;
+        },
+
+        posterGradient() {
+          return '#1a1a1a';
+        },
+
+        posterLabel(name) {
+          return name.replace(/\.[^.]+$/, '').replace(/[._\-]/g, ' ').toUpperCase().slice(0, 16);
+        },
+
+        displayName(name) {
+          return name.replace(/\.[^.]+$/, '');
+        },
+      };
+    }
+  </script>
+</body>
+</html>

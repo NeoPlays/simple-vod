@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create account — MyVOD</title>
+  <link rel="stylesheet" href="/shared.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+    .auth-card { width: 100%; max-width: 360px; }
+    .auth-header { display: flex; flex-direction: column; align-items: center; gap: 16px; margin-bottom: 36px; text-align: center; }
+    .auth-title { font-size: 24px; font-weight: 500; letter-spacing: -0.02em; margin-bottom: 6px; }
+    .auth-sub { font-size: 14px; color: rgba(255,255,255,0.45); }
+    .form-fields { display: flex; flex-direction: column; gap: 12px; }
+    .auth-footer { text-align: center; margin-top: 24px; font-size: 13px; color: var(--fg-faint); }
+    .auth-footer a { color: var(--fg-primary); text-decoration: none; }
+    .auth-footer a:hover { opacity: 0.8; }
+  </style>
+</head>
+<body>
+  <div class="auth-card" x-data="registerPage()">
+    <div class="auth-header">
+      <div class="logo-chip logo-chip-md">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <path d="M5 4.5L19 12L5 19.5V4.5Z" fill="#fafafa"/>
+        </svg>
+      </div>
+      <div>
+        <div class="auth-title">Create your account</div>
+        <div class="auth-sub">Join MyVOD to watch your library</div>
+      </div>
+    </div>
+
+    <form class="form-fields" @submit.prevent="submit">
+      <div class="field">
+        <label class="field-label">Username</label>
+        <input class="input" type="text" x-model="username" placeholder="Choose a username"
+          autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label class="field-label">Password</label>
+        <input class="input" type="password" x-model="password" placeholder="At least 8 characters"
+          autocomplete="new-password" required>
+      </div>
+      <div class="field">
+        <div class="field-label-row">
+          <label class="field-label" style="margin: 0;">Invite token</label>
+          <span class="field-hint">Optional for first user</span>
+        </div>
+        <input class="input input-mono" type="text" x-model="token" placeholder="Paste your invite token">
+      </div>
+      <p class="error-msg" x-show="error" x-text="error" style="margin-top: 4px;"></p>
+      <button class="btn btn-primary btn-h42" type="submit" :disabled="loading"
+        style="width: 100%; margin-top: 8px;">
+        <span x-show="!loading">Create account</span>
+        <span x-show="loading">Creating…</span>
+      </button>
+    </form>
+
+    <div class="auth-footer">
+      Already have one? <a href="/login.html">Sign in</a>
+    </div>
+  </div>
+
+  <script>
+    function registerPage() {
+      return {
+        username: '', password: '', token: '', error: '', loading: false,
+        async submit() {
+          this.loading = true;
+          this.error = '';
+          const res = await fetch('/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              username: this.username,
+              password: this.password,
+              registration_token: this.token,
+            }),
+          });
+          this.loading = false;
+          if (res.ok) {
+            window.location.href = '/login.html';
+          } else {
+            this.error = await res.text();
+          }
+        },
+      };
+    }
+  </script>
+</body>
+</html>

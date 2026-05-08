@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"net/http"
 
+	"github.com/NeoPlays/simple-vod/backend/internal/config"
 	"github.com/NeoPlays/simple-vod/backend/internal/handlers"
 	"github.com/NeoPlays/simple-vod/backend/internal/middleware"
 )
@@ -41,6 +42,10 @@ func New(database *sql.DB) http.Handler {
 	mux.Handle("POST /admin/tokens", admin(h.CreateRegistrationToken))
 	mux.Handle("GET /admin/tokens", admin(h.ListRegistrationTokens))
 	mux.Handle("DELETE /admin/tokens/{token}", admin(h.RevokeRegistrationToken))
+
+	// Serve the frontend as static files, catches anything not matched above.
+	fs := http.FileServer(http.Dir(config.GetFrontendDirectory()))
+	mux.Handle("/", fs)
 
 	return middleware.Logging(mux)
 }

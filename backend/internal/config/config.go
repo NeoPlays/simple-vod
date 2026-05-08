@@ -19,3 +19,11 @@ func GetPasswordPepper() string {
 	}
 	return pepper
 }
+
+func GetFrontendDirectory() string {
+	dir := os.Getenv("FRONTEND_DIR")
+	if dir == "" {
+		return "../frontend"
+	}
+	return dir
+}

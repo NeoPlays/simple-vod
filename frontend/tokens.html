@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tokens — MyVOD</title>
+  <link rel="stylesheet" href="/shared.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+  <style>
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+    .page-content { padding: 32px 24px; flex: 1; max-width: 720px; }
+
+    .page-title { font-size: 22px; font-weight: 500; letter-spacing: -0.02em; }
+    .page-sub { font-size: 13px; color: var(--fg-faint); margin-top: 4px; }
+
+    /* Create card */
+    .create-card {
+      background: var(--bg-surface);
+      border: 0.5px solid var(--border-soft);
+      border-radius: var(--r-lg);
+      padding: 16px; margin-top: 28px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .plus-chip {
+      width: 28px; height: 28px; border-radius: 7px;
+      background: var(--fill-hover);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .create-label { flex: 1; font-size: 13px; color: var(--fg-muted); }
+
+    /* Active count label */
+    .active-label {
+      font-size: 11px; color: var(--fg-hint);
+      letter-spacing: 0.06em; margin: 24px 0 10px; padding: 0 4px;
+    }
+
+    /* Token list */
+    .token-list {
+      background: #0f0f0f;
+      border: 0.5px solid var(--border-faint);
+      border-radius: var(--r-lg);
+      overflow: hidden;
+    }
+    .token-row {
+      padding: 14px 16px;
+      display: flex; align-items: center; gap: 16px;
+      border-bottom: 0.5px solid rgba(255,255,255,0.04);
+      transition: background-color 200ms ease;
+    }
+    .token-row:last-child { border-bottom: none; }
+    .token-row.fade-in { animation: fadeIn 200ms ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+    .token-info { flex: 1; min-width: 0; }
+    .token-value { font-family: var(--font-mono); font-size: 13px; color: var(--fg-primary); letter-spacing: 0.02em; word-break: break-all; }
+    .token-meta { font-size: 11px; color: var(--fg-hint); margin-top: 2px; }
+
+    .token-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
+    .btn-revoke { background: none; border: none; font-family: var(--font-sans); font-size: 11px; color: var(--fg-danger); cursor: pointer; height: 26px; padding: 0 10px; border-radius: var(--r-sm); transition: background-color 120ms ease; }
+    .btn-revoke:hover { background: rgba(220,80,80,0.08); }
+    .confirm-row { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--fg-muted); }
+    .confirm-yes { color: var(--fg-danger); background: none; border: none; font-family: var(--font-sans); font-size: 11px; font-weight: 500; cursor: pointer; padding: 0; }
+    .confirm-yes:hover { opacity: 0.8; }
+    .confirm-cancel { color: var(--fg-muted); background: none; border: none; font-family: var(--font-sans); font-size: 11px; cursor: pointer; padding: 0; }
+    .confirm-cancel:hover { color: var(--fg-primary); }
+
+    .no-tokens { padding: 24px 16px; font-size: 13px; color: var(--fg-hint); text-align: center; }
+  </style>
+</head>
+<body x-data="tokensPage()">
+  <nav class="nav">
+    <div class="nav-left">
+      <a class="logo" href="/videos.html">
+        <div class="logo-chip logo-chip-sm">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+            <path d="M5 4.5L19 12L5 19.5V4.5Z" fill="#fafafa"/>
+          </svg>
+        </div>
+        <span class="logo-wordmark">MyVOD</span>
+      </a>
+      <div class="nav-pills">
+        <a class="nav-pill" href="/videos.html">Library</a>
+        <a class="nav-pill active" href="/tokens.html">Tokens</a>
+      </div>
+    </div>
+    <div class="nav-right">
+      <div class="avatar" x-text="user?.name?.charAt(0)"></div>
+    </div>
+  </nav>
+
+  <div class="page-content">
+    <div class="page-title">Registration tokens</div>
+    <div class="page-sub">Invite new users. Tokens expire after 7 days.</div>
+
+    <div class="create-card">
+      <div class="plus-chip">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+          <path d="M12 5V19M5 12H19" stroke="rgba(255,255,255,0.6)" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <span class="create-label">Generate a new invite token</span>
+      <button class="btn btn-primary btn-h30" @click="createToken" :disabled="creating">
+        <span x-text="creating ? 'Creating…' : 'Create token'"></span>
+      </button>
+    </div>
+
+    <div class="active-label" x-text="`${tokens.length} ACTIVE`"></div>
+
+    <div class="token-list" x-show="tokens.length > 0">
+      <template x-for="t in tokens" :key="t.token">
+        <div class="token-row" :class="{ 'fade-in': t._new }">
+          <div class="token-info">
+            <div class="token-value" x-text="t.token"></div>
+            <div class="token-meta" x-text="`Created ${timeAgo(t.created_at)} · expires in ${timeUntil(t.expires_at)}`"></div>
+          </div>
+          <div class="token-actions">
+            <template x-if="!t._confirming">
+              <div style="display:flex;gap:8px;">
+                <button class="btn btn-quiet btn-h26" @click="copyToken(t)">
+                  <span x-text="t._copied ? 'Copied' : 'Copy'"></span>
+                </button>
+                <button class="btn-revoke" @click="t._confirming = true">Revoke</button>
+              </div>
+            </template>
+            <template x-if="t._confirming">
+              <div class="confirm-row">
+                <span>Revoke?</span>
+                <button class="confirm-yes" @click="revokeToken(t)">Yes</button>
+                <button class="confirm-cancel" @click="t._confirming = false">Cancel</button>
+              </div>
+            </template>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <div class="token-list" x-show="tokens.length === 0">
+      <div class="no-tokens">No active tokens.</div>
+    </div>
+  </div>
+
+  <script>
+    function tokensPage() {
+      return {
+        tokens: [], user: null, creating: false,
+
+        async init() {
+          const res = await fetch('/user');
+          if (!res.ok) { window.location.replace('/login.html'); return; }
+          this.user = await res.json();
+          if (this.user.role !== 'admin') { window.location.replace('/videos.html'); return; }
+          await this.loadTokens();
+        },
+
+        async loadTokens() {
+          const res = await fetch('/admin/tokens');
+          const data = (await res.json()) || [];
+          this.tokens = data.map(t => ({ ...t, _confirming: false, _copied: false, _new: false }));
+        },
+
+        async createToken() {
+          this.creating = true;
+          const res = await fetch('/admin/tokens', { method: 'POST' });
+          if (res.ok) {
+            const t = await res.json();
+            this.tokens.unshift({ ...t, _confirming: false, _copied: false, _new: true });
+          }
+          this.creating = false;
+        },
+
+        async revokeToken(t) {
+          await fetch(`/admin/tokens/${t.token}`, { method: 'DELETE' });
+          this.tokens = this.tokens.filter(x => x.token !== t.token);
+        },
+
+        copyToken(t) {
+          navigator.clipboard.writeText(t.token).then(() => {
+            t._copied = true;
+            setTimeout(() => { t._copied = false; }, 1000);
+          });
+        },
+
+        timeAgo(iso) {
+          const secs = Math.floor((Date.now() - new Date(iso)) / 1000);
+          if (secs < 60)  return 'just now';
+          const mins = Math.floor(secs / 60);
+          if (mins < 60)  return `${mins}m ago`;
+          const hours = Math.floor(mins / 60);
+          if (hours < 24) return `${hours}h ago`;
+          const days = Math.floor(hours / 24);
+          return `${days} day${days !== 1 ? 's' : ''} ago`;
+        },
+
+        timeUntil(iso) {
+          const secs = Math.floor((new Date(iso) - Date.now()) / 1000);
+          if (secs <= 0) return 'expired';
+          const mins = Math.floor(secs / 60);
+          if (mins < 60)  return `${mins}m`;
+          const hours = Math.floor(mins / 60);
+          if (hours < 24) return `${hours}h`;
+          const days = Math.floor(hours / 24);
+          return `${days} day${days !== 1 ? 's' : ''}`;
+        },
+      };
+    }
+  </script>
+</body>
+</html>
