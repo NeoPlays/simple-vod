@@ -27,3 +27,19 @@ func GetFrontendDirectory() string {
 	}
 	return dir
 }
+
+func GetDBPath() string {
+	path := os.Getenv("DB_PATH")
+	if path == "" {
+		return "./db/sqlite.db"
+	}
+	return path
+}
+
+func GetPort() string {
+	port := os.Getenv("PORT")
+	if port == "" {
+		return ":8080"
+	}
+	return ":" + port
+}

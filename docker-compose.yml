@@ -1,0 +1,18 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: neoplays/simple-vod:latest
+    ports:
+      - "${PORT:-8080}:8080"
+    volumes:
+      - db:/data/db
+      - videos:/data/videos
+    env_file:
+      - .env
+    restart: unless-stopped
+
+volumes:
+  db:
+  videos:

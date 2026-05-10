@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/NeoPlays/simple-vod/backend/internal/config"
 	"github.com/NeoPlays/simple-vod/backend/internal/db"
 	"github.com/NeoPlays/simple-vod/backend/internal/routes"
 )
@@ -17,7 +18,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	database, err := db.InitDB("./db/sqlite.db")
+	database, err := db.InitDB(config.GetDBPath())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -55,12 +56,13 @@ func main() {
 
 	mux := routes.New(database)
 
+	addr := config.GetPort()
 	srv := &http.Server{
-		Addr:    ":8080",
+		Addr:    addr,
 		Handler: mux,
 	}
 
-	log.Println("Listening on :8080")
+	log.Printf("Listening on %s", addr)
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
