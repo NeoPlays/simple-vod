@@ -95,7 +95,13 @@ func (h *Handler) StreamVideo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fullPath := filepath.Join(config.GetVideoDirectory(), v.Name)
+	videoDir := filepath.Clean(config.GetVideoDirectory())
+	fullPath := filepath.Join(videoDir, v.Name)
+	if !strings.HasPrefix(fullPath, videoDir+string(os.PathSeparator)) {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
 	f, err := os.Open(fullPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
