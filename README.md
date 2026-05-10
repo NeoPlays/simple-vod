@@ -1,4 +1,4 @@
-# Reel
+# simple-vod
 
 A lightweight self-hosted Video-on-Demand service. Drop `.mp4` files in a folder, sync them, and stream from a clean dark UI — no transcoding, no bloat.
 
