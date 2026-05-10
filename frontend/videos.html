@@ -112,6 +112,13 @@
         </button>
       </template>
       <div class="avatar" x-text="user?.name?.charAt(0)"></div>
+      <button class="btn btn-quiet btn-h32" @click="logout">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+          <path d="M15 3H19C20.1 3 21 3.9 21 5V19C21 20.1 20.1 21 19 21H15M10 17L15 12M15 12L10 7M15 12H3"
+            stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Log out</span>
+      </button>
     </div>
   </nav>
 
@@ -181,6 +188,11 @@
           const vRes = await fetch('/videos');
           this.videos = (await vRes.json()) || [];
           this.syncing = false;
+        },
+
+        async logout() {
+          await fetch('/logout', { method: 'POST' });
+          window.location.replace('/login.html');
         },
 
         posterGradient() {
