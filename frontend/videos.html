@@ -66,6 +66,12 @@
       display: flex; align-items: flex-end; padding: 10px;
       transition: border-color 120ms ease, transform 120ms ease;
       overflow: hidden;
+      position: relative;
+    }
+    .poster-thumb {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
     }
     .tile:hover .poster { transform: scale(1.02); border-color: var(--border-mid); }
     .poster-label { font-size: 11px; color: rgba(255,255,255,0.85); font-weight: 500; }
@@ -149,6 +155,7 @@
       <template x-for="video in filteredVideos" :key="video.id">
         <a class="tile" :href="`/player.html?id=${video.id}&name=${encodeURIComponent(video.name)}`">
           <div class="poster" :style="{ background: posterGradient(video.name) }">
+            <img class="poster-thumb" :src="`/videos/${video.id}/thumb`" @error="$el.remove()" alt="">
             <span class="poster-label" x-text="posterLabel(video.name)"></span>
           </div>
           <div class="tile-title" x-text="displayName(video.name)"></div>

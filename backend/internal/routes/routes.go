@@ -36,6 +36,7 @@ func New(database *sql.DB) http.Handler {
 
 	mux.Handle("GET /videos", authed(h.ListVideos))
 	mux.Handle("GET /videos/{id}", authed(h.StreamVideo))
+	mux.Handle("GET /videos/{id}/thumb", authed(h.ServeThumb))
 	mux.Handle("POST /videos/sync", authed(h.SyncVideos))
 
 	// Admin

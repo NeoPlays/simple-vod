@@ -28,6 +28,14 @@ func GetFrontendDirectory() string {
 	return dir
 }
 
+func GetBinDir() string {
+	dir := os.Getenv("BIN_DIR")
+	if dir == "" {
+		return "./data/bin"
+	}
+	return dir
+}
+
 func GetDBPath() string {
 	path := os.Getenv("DB_PATH")
 	if path == "" {

@@ -9,6 +9,7 @@ services:
     volumes:
       - db:/data/db
       - videos:/data/videos
+      - bin:/data/bin
     env_file:
       - .env
     restart: unless-stopped
@@ -16,3 +17,4 @@ services:
 volumes:
   db:
   videos:
+  bin:

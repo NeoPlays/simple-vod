@@ -1,17 +1,18 @@
 package handlers
 
 import (
+	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"os"
-	"strings"
-	"strconv"
-	"encoding/json"
 	"path/filepath"
-	"log"
+	"strconv"
+	"strings"
 
 	"github.com/NeoPlays/simple-vod/backend/internal/config"
 	"github.com/NeoPlays/simple-vod/backend/internal/db"
+	"github.com/NeoPlays/simple-vod/backend/internal/ffmpeg"
 )
 
 
@@ -178,4 +179,54 @@ func (h *Handler) SyncVideos(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	log.Printf(`{"created":%d,"deleted":%d,"seen":%d}`, createdCount, deletedCount, len(newVideos))
+
+	go generateThumbnails(existing)
+}
+
+func generateThumbnails(videos []db.Video) {
+	bin, err := ffmpeg.Ensure(config.GetBinDir())
+	if err != nil {
+		log.Println("thumbnail generation unavailable:", err)
+		return
+	}
+	videoDir := config.GetVideoDirectory()
+	thumbDir := filepath.Join(videoDir, "thumbs")
+	for _, v := range videos {
+		thumbPath := filepath.Join(thumbDir, ffmpeg.ThumbName(v.Name))
+		if _, err := os.Stat(thumbPath); err == nil {
+			continue
+		}
+		videoPath := filepath.Join(videoDir, v.Name)
+		if err := ffmpeg.Thumbnail(bin, videoPath, thumbPath); err != nil {
+			log.Printf("thumbnail failed for %s: %v", v.Name, err)
+		}
+	}
+}
+
+func (h *Handler) ServeThumb(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	v, err := db.GetVideoByID(r.Context(), h.DB, id)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	videoDir := config.GetVideoDirectory()
+	thumbPath := filepath.Join(videoDir, "thumbs", ffmpeg.ThumbName(v.Name))
+	f, err := os.Open(thumbPath)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	defer f.Close()
+
+	stat, _ := f.Stat()
+	w.Header().Set("Content-Type", "image/jpeg")
+	http.ServeContent(w, r, stat.Name(), stat.ModTime(), f)
 }

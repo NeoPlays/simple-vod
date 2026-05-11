@@ -11,11 +11,12 @@ RUN addgroup -S vod && adduser -S -G vod vod
 WORKDIR /app
 COPY --from=builder /build/server ./server
 COPY frontend/ ./frontend/
-RUN mkdir -p /data/db /data/videos && chown -R vod:vod /app /data
-VOLUME ["/data/db", "/data/videos"]
+RUN mkdir -p /data/db /data/videos /data/bin && chown -R vod:vod /app /data
+VOLUME ["/data/db", "/data/videos", "/data/bin"]
 ENV FRONTEND_DIR=/app/frontend
 ENV VIDEO_DIR=/data/videos
 ENV DB_PATH=/data/db/sqlite.db
+ENV BIN_DIR=/data/bin
 EXPOSE 8080
 USER vod
 CMD ["./server"]
