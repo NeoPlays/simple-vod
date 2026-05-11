@@ -139,6 +139,11 @@ func (h *Handler) SyncVideos(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
+	onDisk := make(map[string]struct{}, len(newVideos))
+	for _, v := range newVideos {
+		onDisk[v.Name] = struct{}{}
+	}
+
 	createdCount := 0
 	for _, v := range newVideos {
 		created, err := db.CreateVideoIfMissing(ctx, h.DB, v.Name)
@@ -152,7 +157,25 @@ func (h *Handler) SyncVideos(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	existing, err := db.ListVideos(ctx, h.DB)
+	if err != nil {
+		log.Println("Error listing videos:", err)
+		http.Error(w, "Failed to sync videos", http.StatusInternalServerError)
+		return
+	}
+
+	deletedCount := 0
+	for _, v := range existing {
+		if _, found := onDisk[v.Name]; !found {
+			if err := db.DeleteVideo(ctx, h.DB, v.ID); err != nil {
+				log.Println("Error deleting video:", err)
+				http.Error(w, "Failed to sync videos", http.StatusInternalServerError)
+				return
+			}
+			deletedCount++
+		}
+	}
+
 	w.WriteHeader(http.StatusOK)
-	log.Printf(`{"created":%d,"seen":%d}`, createdCount, len(newVideos))
+	log.Printf(`{"created":%d,"deleted":%d,"seen":%d}`, createdCount, deletedCount, len(newVideos))
 }
