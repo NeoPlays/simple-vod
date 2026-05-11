@@ -8,11 +8,13 @@
   <link rel="stylesheet" href="/shared.css">
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
   <style>
-    body { background: #000; display: flex; flex-direction: column; min-height: 100vh; }
+    body { background: #000; display: flex; flex-direction: column; height: 100vh; overflow: hidden; justify-content: center; }
 
     .player-wrap {
       position: relative;
-      width: 100%; aspect-ratio: 16/9;
+      width: min(100%, calc(100vh * 16 / 9));
+      aspect-ratio: 16/9;
+      margin: 0 auto;
       background: #000;
       user-select: none;
     }
@@ -89,7 +91,6 @@
       position: absolute; top: 50%; transform: translate(-50%, -50%);
       width: 11px; height: 11px; background: var(--fg-primary);
       border-radius: 50%; pointer-events: none;
-      margin-top: 8px;
     }
     .transport-row { display: flex; align-items: center; justify-content: space-between; }
     .transport-left, .transport-right { display: flex; align-items: center; gap: 18px; }
